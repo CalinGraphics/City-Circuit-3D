@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>City Circuit 3D – SPG Project</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #02040b;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #f5f7ff;
+    }
+    canvas { display: block; }
+
+    #landing {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top, #1f3b71 0, #050814 55%, #000 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      z-index: 10;
+    }
+    #landing h1 {
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-size: 1.2rem;
+      color: #7da7ff;
+      margin-bottom: 0.6rem;
+    }
+    #landing h2 {
+      font-size: 2.4rem;
+      margin: 0 0 1.2rem 0;
+    }
+    #landing p {
+      max-width: 540px;
+      margin: 0.2rem 1rem;
+      color: #c9d2ff;
+    }
+    #landing .tasks {
+      margin-top: 1.4rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.7rem;
+      max-width: 640px;
+      width: 90%;
+    }
+    #landing .task-item {
+      border-radius: 10px;
+      padding: 0.6rem 0.8rem;
+      background: linear-gradient(135deg, rgba(137, 180, 255, 0.12), rgba(90, 219, 255, 0.05));
+      border: 1px solid rgba(124, 156, 255, 0.4);
+      font-size: 0.78rem;
+      text-align: left;
+    }
+    #landing .task-item strong {
+      display: block;
+      margin-bottom: 0.25rem;
+      color: #e3e7ff;
+    }
+    #landing button {
+      margin-top: 1.7rem;
+      padding: 0.75rem 1.8rem;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(120deg, #4ff0ff, #5c8bff);
+      color: #02040b;
+      font-weight: 600;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 0 25px rgba(84, 189, 255, 0.6);
+    }
+    #landing button:hover {
+      box-shadow: 0 0 35px rgba(84, 189, 255, 0.9);
+      transform: translateY(-1px);
+    }
+
+    #hud {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 1rem 1.4rem;
+      z-index: 5;
+      font-size: 0.78rem;
+    }
+    #hud-left, #hud-right {
+      max-width: 260px;
+      color: #cfd7ff;
+    }
+    .hud-panel {
+      background: radial-gradient(circle at top left, rgba(93, 196, 255, 0.35), rgba(5, 10, 25, 0.9));
+      border-radius: 14px;
+      padding: 0.75rem 0.9rem;
+      border: 1px solid rgba(122, 162, 255, 0.6);
+      backdrop-filter: blur(14px);
+      pointer-events: auto;
+    }
+    .hud-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #a8bcff;
+      margin-bottom: 0.25rem;
+    }
+    #speed-value {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+    #hud-controls ul {
+      padding-left: 1.1rem;
+      margin: 0.15rem 0 0 0;
+    }
+    #hud-controls li {
+      margin-bottom: 0.15rem;
+    }
+    #collision-banner {
+      position: absolute;
+      left: 50%;
+      top: 1.2rem;
+      transform: translateX(-50%);
+      padding: 0.4rem 1.3rem;
+      border-radius: 999px;
+      background: rgba(255, 69, 58, 0.96);
+      color: #fff7f7;
+      font-size: 0.85rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+      z-index: 7;
+    }
+    #collision-banner.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(4px);
+    }
+  </style>
+</head>
+<body>
+<div id="landing">
+  <h1>Sisteme de Grafică pe Calculator</h1>
+  <h2>City Circuit 3D</h2>
+  <p>
+    Scenă completă într-un &bdquo;cub&rdquo; urban: circuit stradal nocturn,
+    relief central tip parc, clădiri, mașini și drone iluminate dinamic.
+  </p>
+  <div class="tasks">
+  </div>
+  <button id="start-button">Pornește jocul</button>
+</div>
+
+<div id="hud">
+  <div id="hud-left">
+    <div class="hud-panel">
+      <div class="hud-title">Viteză vehicul</div>
+      <div><span id="speed-value">0</span> km/h</div>
+    </div>
+  </div>
+  <div id="hud-right">
+    <div class="hud-panel" id="hud-controls">
+      <div class="hud-title">Controale</div>
+      <ul>
+        <li><strong>W / S</strong> – accelerație / frână</li>
+        <li><strong>A / D</strong> – virezi stânga / dreapta</li>
+        <li><strong>Mouse</strong> – orbită cameră</li>
+        <li><strong>Q / E</strong> – cameră în sus / jos</li>
+        <li><strong>R</strong> – resetezi mașina</li>
+      </ul>
+    </div>
+  </div>
+  <div id="collision-banner">Coliziune cu clădirea – poziție resetată</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+
+  const landingEl = document.getElementById('landing');
+  const startButton = document.getElementById('start-button');
+  const speedValueEl = document.getElementById('speed-value');
+  const collisionBannerEl = document.getElementById('collision-banner');
+
+  let gameStarted = false;
+  let lastTime = performance.now();
+
+  startButton.addEventListener('click', () => {
+    gameStarted = true;
+    landingEl.style.opacity = '0';
+    setTimeout(() => {
+      landingEl.style.display = 'none';
+    }, 280);
+  });
+
+  // 1. SCENE SETUP & HORIZON (P1) – City inside a "cube"
+  const scene = new THREE.Scene();
+  const textureLoader = new THREE.TextureLoader();
+
+  // Procedural textures fallback
+  function makeCanvasTexture(drawFn, size = 512) {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    drawFn(ctx, size);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
+  const skyTexture = textureLoader.load('textures/sky.jpg');
+  skyTexture.mapping = THREE.EquirectangularReflectionMapping;
+  skyTexture.colorSpace = THREE.SRGBColorSpace;
+  scene.background = skyTexture;
+
+  // 2. CAMERA & RENDERER SETUP
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 80, 130);
+  camera.lookAt(0, 0, 0);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.body.appendChild(renderer.domElement);
+
+  // 3. CAMERA CONTROLS (P3)
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+  controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+  // 4. TERRAIN & RELIEF (P1 - Urban park în mijloc)
+  const trackInnerR = 32;
+  const trackOuterR = 44;
+  const trackRadius = (trackInnerR + trackOuterR) * 0.5;
+
+  const buildingBoundX = 75;
+  const buildingBoundZ = 52;
+
+  function groundHeightAt(x, z) {
+    const d = Math.sqrt((x / 1.6) * (x / 1.6) + (z * z));
+    const trackY = 0.8;
+
+    // banda pistei: șanț sub asfalt
+    if (d >= trackInnerR && d <= trackOuterR) {
+      return trackY - 0.35;
+    }
+
+    // dealuri mici în spatele clădirilor (zona goală din colțuri)
+    const inOuterZone = Math.abs(x) > buildingBoundX || Math.abs(z) > buildingBoundZ;
+    if (inOuterZone) {
+      const hill = Math.sin(x / 18) * Math.cos(z / 14) * 2.5 +
+        Math.sin(x / 9 + 1.3) * Math.cos(z / 11 - 0.7) * 1.2;
+      return Math.max(0, hill * 0.6);
+    }
+
+    return 0;
+  }
+
+  const planeGeometry = new THREE.PlaneGeometry(260, 260, 256, 256);
+  const positions = planeGeometry.attributes.position.array;
+
+  for (let i = 0; i < positions.length; i += 3) {
+    const x = positions[i];
+    const y = positions[i + 1];
+
+    const height = groundHeightAt(x, y);
+    positions[i + 2] = height;
+  }
+
+  planeGeometry.computeVertexNormals();
+
+  const grassTex = textureLoader.load('textures/grass.jpg');
+  grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+  grassTex.repeat.set(12, 12);
+  grassTex.colorSpace = THREE.SRGBColorSpace;
+
+  const planeMaterial = new THREE.MeshStandardMaterial({
+    map: grassTex,
+    roughness: 0.85,
+    color: 0xffffff
+  });
+
+  const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+  plane.rotation.x = -Math.PI / 2;
+  plane.receiveShadow = true;
+  scene.add(plane);
+
+  // 5. GLOBAL LIGHTING SETUP (Cool night city)
+  const ambientLight = new THREE.AmbientLight(0x88aaff, 0.5);
+  scene.add(ambientLight);
+
+  const moonLight = new THREE.DirectionalLight(0xaad6ff, 0.6);
+  moonLight.position.set(50, 50, 20);
+  moonLight.castShadow = true;
+  scene.add(moonLight);
+
+  // 6. TRACK GEOMETRY & TEXTURE (P2 – circuit circular, fără obstacole)
+  const trackGeometry = new THREE.RingGeometry(trackInnerR, trackOuterR, 96);
+
+  const asphaltTex = textureLoader.load('textures/asphalt.jpg');
+  asphaltTex.wrapS = asphaltTex.wrapT = THREE.RepeatWrapping;
+  asphaltTex.repeat.set(3, 3);
+  asphaltTex.colorSpace = THREE.SRGBColorSpace;
+
+  const trackMaterial = new THREE.MeshStandardMaterial({
+    map: asphaltTex,
+    roughness: 0.92,
+    metalness: 0.05,
+    side: THREE.DoubleSide
+  });
+
+  const track = new THREE.Mesh(trackGeometry, trackMaterial);
+  track.rotation.x = -Math.PI / 2;
+  track.position.y = 0.8;
+  track.receiveShadow = true;
+  scene.add(track);
+
+  // 7. CITY BUILDINGS & TREES (P2 & C1) – static obstacles
+  const buildingHitboxes = [];
+  const treeHitboxes = [];
+  const baseBuildingGeo = new THREE.BoxGeometry(4, 10, 4);
+
+  const buildingTex = textureLoader.load('textures/building.jpg');
+  buildingTex.wrapS = buildingTex.wrapT = THREE.RepeatWrapping;
+  buildingTex.repeat.set(1.5, 2);
+  buildingTex.colorSpace = THREE.SRGBColorSpace;
+
+  const buildingMat = new THREE.MeshStandardMaterial({
+    map: buildingTex,
+    roughness: 0.6,
+    metalness: 0.25,
+    emissive: new THREE.Color(0x181d33),
+    emissiveIntensity: 0.35
+  });
+
+  const buildings = [];
+  const cityHalfX = 80;
+  const cityHalfZ = 55;
+  const stepX = 10;
+  const stepZ = 12;
+
+  function addBuildingAt(x, z) {
+    const bHeight = 14 + Math.random() * 12;
+    const building = new THREE.Mesh(baseBuildingGeo, buildingMat);
+    building.scale.set(1.1 + Math.random() * 0.8, bHeight / 10, 1.1 + Math.random() * 0.8);
+    building.position.set(x, bHeight / 2, z);
+    building.castShadow = true;
+    building.receiveShadow = true;
+    scene.add(building);
+    buildings.push(building);
+
+    building.updateMatrixWorld();
+    const hitbox = new THREE.Box3().setFromObject(building);
+    buildingHitboxes.push(hitbox);
+  }
+
+  // blocuri așezate dreptunghiular, uniform, pe marginea scenei
+  for (let x = -cityHalfX; x <= cityHalfX; x += stepX) {
+    addBuildingAt(x, -cityHalfZ);
+    if (Math.abs(x) > cityHalfX * 0.2) {
+      addBuildingAt(x, cityHalfZ);
+    }
+  }
+  for (let z = -cityHalfZ + stepZ; z <= cityHalfZ - stepZ; z += stepZ) {
+    addBuildingAt(-cityHalfX, z);
+    addBuildingAt(cityHalfX, z);
+  }
+
+  // pomi – model mai mare, cu trunchi și coroană în mai multe straturi
+  const barkTex = textureLoader.load('textures/tree_bark.jpg');
+  barkTex.wrapS = barkTex.wrapT = THREE.RepeatWrapping;
+  barkTex.repeat.set(1, 3);
+  barkTex.colorSpace = THREE.SRGBColorSpace;
+  const trunkMat = new THREE.MeshStandardMaterial({
+    map: barkTex,
+    color: 0x8b6b47,
+    roughness: 0.9
+  });
+  const treeLeavesTex = textureLoader.load('textures/tree_leaves.jpg');
+  treeLeavesTex.wrapS = treeLeavesTex.wrapT = THREE.RepeatWrapping;
+  treeLeavesTex.repeat.set(1.5, 1.5);
+  treeLeavesTex.colorSpace = THREE.SRGBColorSpace;
+  const foliageMat = new THREE.MeshStandardMaterial({
+    map: treeLeavesTex,
+    roughness: 0.7,
+    color: 0xffffff
+  });
+
+  function createTree(scale = 1) {
+    const s = scale;
+    const tree = new THREE.Group();
+
+    const trunkRadius = 0.55 * s;
+    const trunkHeight = 4.0 * s;
+    const trunkGeo = new THREE.CylinderGeometry(trunkRadius * 0.85, trunkRadius, trunkHeight, 10);
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = trunkHeight / 2;
+    trunk.castShadow = trunk.receiveShadow = true;
+    tree.add(trunk);
+
+    const crownBaseY = trunkHeight - 0.3 * s;
+    const spheres = [
+      { r: 2.2 * s, y: crownBaseY + 1.2 * s },
+      { r: 2.0 * s, y: crownBaseY + 2.4 * s },
+      { r: 1.5 * s, y: crownBaseY + 3.4 * s },
+    ];
+    for (const { r, y } of spheres) {
+      const foliageGeo = new THREE.SphereGeometry(r, 16, 14);
+      const foliage = new THREE.Mesh(foliageGeo, foliageMat);
+      foliage.position.y = y;
+      foliage.castShadow = foliage.receiveShadow = true;
+      tree.add(foliage);
+    }
+
+    return tree;
+  }
+
+  // parc central – cerc ordonat de copaci
+  const innerTreeRadius = trackInnerR - 8;
+  const centralTreeCount = 12;
+  for (let i = 0; i < centralTreeCount; i++) {
+    const angle = (i / centralTreeCount) * Math.PI * 2;
+    const x = Math.cos(angle) * innerTreeRadius * 0.6;
+    const z = Math.sin(angle) * innerTreeRadius * 0.6;
+    const tree = createTree(0.9 + Math.random() * 0.2);
+    tree.position.set(x, 0, z);
+    scene.add(tree);
+    tree.updateMatrixWorld();
+    treeHitboxes.push(new THREE.Box3().setFromObject(tree));
+  }
+
+  // al doilea inel de copaci între circuit și clădiri
+  const ringTreeRadius = trackOuterR + 6;
+  const ringTreeCount = 16;
+  for (let i = 0; i < ringTreeCount; i++) {
+    const angle = (i / ringTreeCount) * Math.PI * 2;
+    const x = Math.cos(angle) * ringTreeRadius;
+    const z = Math.sin(angle) * ringTreeRadius;
+    const tree = createTree(1.0 + Math.random() * 0.25);
+    tree.position.set(x, 0, z);
+    scene.add(tree);
+    tree.updateMatrixWorld();
+    treeHitboxes.push(new THREE.Box3().setFromObject(tree));
+  }
+
+  // 8. LED STRIP LIGHT POLES (P3)
+  const poleGeo = new THREE.CylinderGeometry(0.2, 0.2, 8);
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8 });
+  const poleHitboxes = [];
+
+  const ledGeo = new THREE.BoxGeometry(0.1, 7.5, 0.1);
+  const ledMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0xffaa00, // Neon sci-fi orange glow
+    emissiveIntensity: 3
+  });
+
+  const numLights = 14;
+  const lightRadius = trackOuterR + 0.3;
+  for (let i = 0; i < numLights; i++) {
+    let angle = (i / numLights) * Math.PI * 2;
+    let x = Math.cos(angle) * lightRadius;
+    let z = Math.sin(angle) * lightRadius;
+
+    let height = groundHeightAt(x, z);
+
+    let poleGroup = new THREE.Group();
+    poleGroup.position.set(x, height + 4, z);
+
+    let poleBase = new THREE.Mesh(poleGeo, poleMat);
+    poleBase.castShadow = true;
+    poleGroup.add(poleBase);
+
+    let ledStrip = new THREE.Mesh(ledGeo, ledMat);
+    ledStrip.position.set(0, 0, 0.2);
+    poleGroup.add(ledStrip);
+
+    poleGroup.lookAt(0, height + 4, 0);
+    scene.add(poleGroup);
+    poleGroup.updateMatrixWorld();
+    poleHitboxes.push(new THREE.Box3().setFromObject(poleGroup));
+
+    let spotLight = new THREE.SpotLight(0xffddaa, 2.4);
+    spotLight.position.set(x, height + 8, z);
+    spotLight.castShadow = true;
+    spotLight.angle = Math.PI / 4;
+    spotLight.penumbra = 0.5;
+    spotLight.distance = 60;
+    spotLight.shadow.mapSize.width = 1024;
+    spotLight.shadow.mapSize.height = 1024;
+
+    let target = new THREE.Object3D();
+    target.position.set(Math.cos(angle) * 35 * 1.5, height, Math.sin(angle) * 35);
+    scene.add(target);
+    spotLight.target = target;
+    scene.add(spotLight);
+  }
+
+  // 9. Obiecte mobile (C2) – doar mașini, fără "bile"/drone
+  const drones = [];
+
+  // 10. CAR MODELS & HITBOXES (C1, C2)
+  function createCar(color) {
+    const car = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.4,
+      metalness: 0.45
+    });
+    const cabinMat = new THREE.MeshStandardMaterial({
+      color: 0x8fd2ff,
+      roughness: 0.1,
+      metalness: 0.2,
+      transparent: true,
+      opacity: 0.9
+    });
+    const wheelMat = new THREE.MeshStandardMaterial({
+      color: 0x111111,
+      roughness: 0.9
+    });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 4.2), bodyMat);
+    body.position.y = 0.5;
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.6, 2.0), cabinMat);
+    cabin.position.set(0, 0.95, -0.5);
+
+    const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.4, 16);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const wheelOffsets = [
+      [-1.0, 0.3, -1.5],
+      [1.0, 0.3, -1.5],
+      [-1.0, 0.3, 1.5],
+      [1.0, 0.3, 1.5],
+    ];
+    for (const [x, y, z] of wheelOffsets) {
+      const w = new THREE.Mesh(wheelGeo, wheelMat);
+      w.position.set(x, y, z);
+      w.castShadow = true;
+      w.receiveShadow = true;
+      car.add(w);
+    }
+
+    body.castShadow = body.receiveShadow = true;
+    cabin.castShadow = cabin.receiveShadow = true;
+
+    car.add(body);
+    car.add(cabin);
+    return car;
+  }
+
+  const aiColors = [0xff3b5c, 0xff9f1a, 0x7bff6a, 0xfff56a];
+  const aiCars = [];
+
+  for (let i = 0; i < 4; i++) {
+    const car = createCar(aiColors[i]);
+    car.userData.angle = (i / 4) * Math.PI * 2;
+    aiCars.push(car);
+    scene.add(car);
+  }
+
+  const playerCar = createCar(0x00b4ff);
+  scene.add(playerCar);
+
+  const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
+  document.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (keys.hasOwnProperty(k)) keys[k] = true;
+  });
+  document.addEventListener('keyup', (e) => {
+    const k = e.key.toLowerCase();
+    if (keys.hasOwnProperty(k)) keys[k] = false;
+  });
+  const playerHitbox = new THREE.Box3();
+
+  // 11. MOVEMENT / HUD STATE
+  let playerVelocity = 0;
+  const maxSpeed = 100;     // km/h
+  const accelRate = 55;     // km/h / s
+  const brakeRate = 75;
+  const friction = 30;
+
+  function resetPlayerPosition(withMessage) {
+    playerCar.position.set(trackRadius, 1.01, 0);
+    playerCar.rotation.set(0, Math.PI, 0);
+    playerVelocity = 0;
+    if (withMessage) {
+      collisionBannerEl.classList.add('visible');
+      setTimeout(() => collisionBannerEl.classList.remove('visible'), 1600);
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'r') {
+      resetPlayerPosition(false);
+    }
+  });
+
+  resetPlayerPosition(false);
+
+  // 12. MASTER ANIMATION LOOP
+  function animate(now) {
+    requestAnimationFrame(animate);
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    // --- AI cars pe circuit ---
+    const aiSpeed = 0.7;
+    for (let car of aiCars) {
+      car.userData.angle += aiSpeed * dt;
+      const a = car.userData.angle;
+      const x = Math.cos(a) * trackRadius;
+      const z = Math.sin(a) * trackRadius;
+      car.position.set(x, 1.01, z);
+
+      const nextA = a + 0.15;
+      const nx = Math.cos(nextA) * trackRadius;
+      const nz = Math.sin(nextA) * trackRadius;
+      car.lookAt(nx, 1.01, nz);
+    }
+
+    if (gameStarted) {
+      // --- Player Movement & Off-Roading ---
+      const forwardPressed = keys['w'];
+      const backwardPressed = keys['s'];
+
+      if (forwardPressed) {
+        playerVelocity += accelRate * dt;
+      } else if (backwardPressed) {
+        playerVelocity -= brakeRate * dt;
+      } else {
+        if (playerVelocity > 0) playerVelocity = Math.max(0, playerVelocity - friction * dt);
+        else if (playerVelocity < 0) playerVelocity = Math.min(0, playerVelocity + friction * dt);
+      }
+
+      playerVelocity = Math.max(-maxSpeed * 0.4, Math.min(maxSpeed, playerVelocity));
+
+      const speedMetersPerSec = playerVelocity / 3.6;
+      const moveDistance = speedMetersPerSec * dt;
+
+      if (keys['a']) playerCar.rotation.y += 1.3 * dt;
+      if (keys['d']) playerCar.rotation.y -= 1.3 * dt;
+
+      playerCar.translateZ(-moveDistance);
+
+      let px = playerCar.position.x;
+      let pz = playerCar.position.z;
+
+      let pd = Math.sqrt((px / 1.6) * (px / 1.6) + (pz * pz));
+
+      if (pd >= trackInnerR && pd <= trackOuterR) {
+        playerCar.position.y = 1.01; // același nivel cu mașinile AI
+      } else {
+        playerCar.position.y = groundHeightAt(px, pz) + 0.5;
+      }
+
+      // --- Player Collisions: clădiri, copaci, stâlpi ---
+      playerCar.updateMatrixWorld();
+      playerHitbox.setFromObject(playerCar);
+
+      function intersectsAny(boxes) {
+        for (let i = 0; i < boxes.length; i++) {
+          if (playerHitbox.intersectsBox(boxes[i])) return true;
+        }
+        return false;
+      }
+
+      if (
+        intersectsAny(buildingHitboxes) ||
+        intersectsAny(treeHitboxes) ||
+        intersectsAny(poleHitboxes)
+      ) {
+        resetPlayerPosition(true);
+      }
+
+      // HUD
+      speedValueEl.textContent = Math.round(Math.abs(playerVelocity)).toString();
+    }
+
+    // Camera vertical orbit with keyboard (Q/E)
+    if (keys['q']) camera.position.y += 25 * dt;
+    if (keys['e']) camera.position.y -= 25 * dt;
+
+    controls.update();
+    renderer.render(scene, camera);
+  }
+
+  requestAnimationFrame(animate);
+
+  window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  });
+</script>
+</body>
+</html>
