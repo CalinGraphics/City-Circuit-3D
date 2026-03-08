@@ -97,5 +97,4 @@ python -m http.server 8080
 
 ## 📝 Licență
 
-Proiect realizat în cadrul cursului **Sisteme de Grafică pe Calculator (SPG)**.  
 Liber de utilizat în scop educațional.
