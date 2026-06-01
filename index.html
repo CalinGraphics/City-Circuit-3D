@@ -155,6 +155,11 @@
     relief central tip parc, clădiri, mașini și drone iluminate dinamic.
   </p>
   <div class="tasks">
+    <div class="task-item"><strong>P1 – Scenă &amp; Relief</strong>Circuit urban nocturn, teren deformabil, parc central</div>
+    <div class="task-item"><strong>P2 – Modele &amp; Textură</strong>Clădiri, pomi, asfalt cu texturi procedurale</div>
+    <div class="task-item"><strong>P3 – Cameră &amp; Lumini</strong>OrbitControls, spoturi LED, umbră dinamică</div>
+    <div class="task-item"><strong>C1 – Coliziuni</strong>Detectare cu clădiri, copaci și stâlpi</div>
+    <div class="task-item"><strong>C2 – Obiecte mobile</strong>6 drone cu mișcare aleatoare + 4 mașini AI pe circuit</div>
   </div>
   <button id="start-button">Pornește jocul</button>
 </div>
@@ -508,8 +513,59 @@
     scene.add(spotLight);
   }
 
-  // 9. Obiecte mobile (C2) – doar mașini, fără "bile"/drone
-  const drones = [];
+  // 9. Obiecte mobile (C2) – drone cu mișcare aleatoare + iluminare
+  const droneObjects = [];
+
+  function createDroneMesh(hexColor) {
+    const g = new THREE.Group();
+    const col = new THREE.Color(hexColor);
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.4, metalness: 0.8 });
+    const glowMat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 3, roughness: 0 });
+
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.7), darkMat));
+
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), glowMat);
+    core.position.y = 0.09;
+    g.add(core);
+
+    const rotorMat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.5, transparent: true, opacity: 0.6 });
+    const armDirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const rotors = [];
+    for (const [dx, dz] of armDirs) {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.05), darkMat);
+      if (dz !== 0) arm.rotation.y = Math.PI / 2;
+      arm.position.set(dx * 0.4, 0, dz * 0.4);
+      g.add(arm);
+      const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 8), rotorMat);
+      rotor.position.set(dx * 0.55, 0.06, dz * 0.55);
+      g.add(rotor);
+      rotors.push(rotor);
+    }
+    g.userData.rotors = rotors;
+
+    const light = new THREE.PointLight(hexColor, 3, 22);
+    g.add(light);
+    g.userData.pointLight = light;
+
+    return g;
+  }
+
+  const droneColorList = [0xff3366, 0x33ffaa, 0xffaa22, 0x3399ff, 0xff44ff, 0x44eeff];
+
+  for (let i = 0; i < 6; i++) {
+    const drone = createDroneMesh(droneColorList[i]);
+    const angle = (i / 6) * Math.PI * 2;
+    const r = 30 + (i % 3) * 15;
+    drone.position.set(Math.cos(angle) * r, 14 + i * 3, Math.sin(angle) * r);
+    drone.userData.velocity = new THREE.Vector3(
+      (Math.random() - 0.5) * 10,
+      (Math.random() - 0.5) * 2,
+      (Math.random() - 0.5) * 10
+    );
+    drone.userData.changeTimer = Math.random() * 3;
+    scene.add(drone);
+    droneObjects.push(drone);
+  }
 
   // 10. CAR MODELS & HITBOXES (C1, C2)
   function createCar(color) {
@@ -557,15 +613,32 @@
 
     car.add(body);
     car.add(cabin);
+
+    // Faruri & stopuri emissive (C2: iluminat)
+    const lampGeo = new THREE.BoxGeometry(0.22, 0.12, 0.05);
+    const hlMat = new THREE.MeshStandardMaterial({ color: 0xffeecc, emissive: 0xffeecc, emissiveIntensity: 5 });
+    const tlMat = new THREE.MeshStandardMaterial({ color: 0xff1100, emissive: 0xff1100, emissiveIntensity: 4 });
+    for (const xOff of [-0.7, 0.7]) {
+      const hl = new THREE.Mesh(lampGeo, hlMat);
+      hl.position.set(xOff, 0.5, -2.08);
+      car.add(hl);
+      const tl = new THREE.Mesh(lampGeo, tlMat);
+      tl.position.set(xOff, 0.5, 2.08);
+      car.add(tl);
+    }
+
     return car;
   }
 
   const aiColors = [0xff3b5c, 0xff9f1a, 0x7bff6a, 0xfff56a];
   const aiCars = [];
 
+  // Viteze individuale predefinite – regulă prestabilită (C2)
+  const aiSpeeds = [0.55, 0.72, 0.88, 0.62];
   for (let i = 0; i < 4; i++) {
     const car = createCar(aiColors[i]);
     car.userData.angle = (i / 4) * Math.PI * 2;
+    car.userData.speed = aiSpeeds[i];
     aiCars.push(car);
     scene.add(car);
   }
@@ -615,10 +688,9 @@
     const dt = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
 
-    // --- AI cars pe circuit ---
-    const aiSpeed = 0.7;
+    // --- AI cars pe circuit (C2: mișcare după regulă prestabilită) ---
     for (let car of aiCars) {
-      car.userData.angle += aiSpeed * dt;
+      car.userData.angle += car.userData.speed * dt;
       const a = car.userData.angle;
       const x = Math.cos(a) * trackRadius;
       const z = Math.sin(a) * trackRadius;
@@ -628,6 +700,41 @@
       const nx = Math.cos(nextA) * trackRadius;
       const nz = Math.sin(nextA) * trackRadius;
       car.lookAt(nx, 1.01, nz);
+    }
+
+    // --- Drone – mișcare aleatoare (C2: aleator + iluminat) ---
+    for (const drone of droneObjects) {
+      drone.userData.changeTimer -= dt;
+      if (drone.userData.changeTimer <= 0) {
+        drone.userData.velocity.set(
+          (Math.random() - 0.5) * 14,
+          (Math.random() - 0.5) * 3,
+          (Math.random() - 0.5) * 14
+        );
+        drone.userData.changeTimer = 1.5 + Math.random() * 3.5;
+      }
+
+      drone.position.addScaledVector(drone.userData.velocity, dt);
+
+      const yMin = 12, yMax = 42, xzMax = 85;
+      if (drone.position.y < yMin) { drone.position.y = yMin; drone.userData.velocity.y = Math.abs(drone.userData.velocity.y); }
+      if (drone.position.y > yMax) { drone.position.y = yMax; drone.userData.velocity.y = -Math.abs(drone.userData.velocity.y); }
+      if (drone.position.x >  xzMax) { drone.position.x =  xzMax; drone.userData.velocity.x = -Math.abs(drone.userData.velocity.x); }
+      if (drone.position.x < -xzMax) { drone.position.x = -xzMax; drone.userData.velocity.x =  Math.abs(drone.userData.velocity.x); }
+      if (drone.position.z >  xzMax) { drone.position.z =  xzMax; drone.userData.velocity.z = -Math.abs(drone.userData.velocity.z); }
+      if (drone.position.z < -xzMax) { drone.position.z = -xzMax; drone.userData.velocity.z =  Math.abs(drone.userData.velocity.z); }
+
+      // Înclinare după direcție de zbor
+      drone.rotation.x = drone.userData.velocity.z * -0.025;
+      drone.rotation.z = drone.userData.velocity.x *  0.025;
+
+      // Rotire elice
+      for (const rotor of drone.userData.rotors) {
+        rotor.rotation.y += 18 * dt;
+      }
+
+      // Pulsație lumină
+      drone.userData.pointLight.intensity = 2.5 + Math.sin(now * 0.003 + drone.position.x) * 1.0;
     }
 
     if (gameStarted) {
