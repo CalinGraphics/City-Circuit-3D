@@ -522,28 +522,28 @@
     const darkMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.4, metalness: 0.8 });
     const glowMat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 3, roughness: 0 });
 
-    g.add(new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.18, 0.7), darkMat));
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.9, 3.5), darkMat));
 
-    const core = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), glowMat);
-    core.position.y = 0.09;
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.75, 8, 8), glowMat);
+    core.position.y = 0.45;
     g.add(core);
 
     const rotorMat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.5, transparent: true, opacity: 0.6 });
     const armDirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
     const rotors = [];
     for (const [dx, dz] of armDirs) {
-      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.05), darkMat);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.25, 0.25), darkMat);
       if (dz !== 0) arm.rotation.y = Math.PI / 2;
-      arm.position.set(dx * 0.4, 0, dz * 0.4);
+      arm.position.set(dx * 2.0, 0, dz * 2.0);
       g.add(arm);
-      const rotor = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 8), rotorMat);
-      rotor.position.set(dx * 0.55, 0.06, dz * 0.55);
+      const rotor = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.15, 8), rotorMat);
+      rotor.position.set(dx * 2.75, 0.3, dz * 2.75);
       g.add(rotor);
       rotors.push(rotor);
     }
     g.userData.rotors = rotors;
 
-    const light = new THREE.PointLight(hexColor, 3, 22);
+    const light = new THREE.PointLight(hexColor, 4, 40);
     g.add(light);
     g.userData.pointLight = light;
 
